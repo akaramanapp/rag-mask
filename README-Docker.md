@@ -1,187 +1,294 @@
-# Text Anonymizer - Docker Deployment
+# RAG Mask - Docker Compose Setup Guide
 
-Bu proje Docker kullanılarak kolayca deploy edilebilir. Microsoft Presidio servisleri de dahil edilmiştir.
+This document explains how to run the RAG Mask application using Docker Compose.
 
-## 🐳 Docker ile Çalıştırma
+## About the Project
 
-### Production Deployment (Tüm Servisler)
+RAG Mask is a Next.js application that performs text anonymization operations using Microsoft Presidio services. The application consists of the following services:
 
-```bash
-# Tüm servisleri (Presidio + Web App) başlatma
-docker-compose up --build
+- **Presidio Analyzer**: Analyzes texts and detects sensitive data
+- **Presidio Anonymizer**: Anonymizes detected sensitive data
+- **Text Anonymizer Web App**: User interface and API services
 
-# Arka planda çalıştırma
-docker-compose up -d --build
-```
+## Requirements
 
-### Development Deployment
+- Docker (20.10 or higher)
+- Docker Compose (2.0 or higher)
+- At least 4GB RAM
+- At least 2GB free disk space
 
-```bash
-# Development modunda çalıştırma (hot reload ile)
-docker-compose --profile dev up --build
+## Quick Start
 
-# Arka planda development modunda çalıştırma
-docker-compose --profile dev up -d --build
-```
-
-### Sadece Presidio Servisleri
+### 1. Clone the Project
 
 ```bash
-# Sadece Presidio servislerini başlatma
-docker-compose up presidio-analyzer presidio-anonymizer
-
-# Arka planda
-docker-compose up -d presidio-analyzer presidio-anonymizer
+git clone <repository-url>
+cd rag-mask
 ```
 
-### Manuel Docker Build
+### 2. Start the Application
+
+#### Production Mode (Recommended)
 
 ```bash
-# Production image build
-docker build -t text-anonymizer .
-
-# Development image build
-docker build -f Dockerfile.dev -t text-anonymizer:dev .
-
-# Production container çalıştırma
-docker run -p 3000:3000 text-anonymizer
-
-# Development container çalıştırma
-docker run -p 3001:3000 -v $(pwd):/app text-anonymizer:dev
+docker compose up -d
 ```
 
-## 📋 Kullanılabilir Komutlar
+This command starts the following services:
+- Presidio Analyzer (Port: 5002)
+- Presidio Anonymizer (Port: 5001)
+- Text Anonymizer Web App (Port: 3000)
+
+#### Development Mode
+
+For development with hot reloading feature:
 
 ```bash
-# Tüm servisleri durdurma
-docker-compose down
-
-# Servisleri ve volume'ları temizleme
-docker-compose down -v
-
-# Logları görüntüleme
-docker-compose logs -f
-
-# Belirli servisin loglarını görüntüleme
-docker-compose logs -f text-anonymizer
-docker-compose logs -f presidio-analyzer
-docker-compose logs -f presidio-anonymizer
-
-# Container'ları yeniden başlatma
-docker-compose restart
-
-# Image'ları temizleme
-docker system prune -a
-
-# Servis durumlarını kontrol etme
-docker-compose ps
+docker compose --profile dev up -d
 ```
 
-## 🌐 Erişim
+This mode starts the following additional service:
+- Text Anonymizer Dev (Port: 3001)
 
-- **Web Application**: http://localhost:3000
-- **Development**: http://localhost:3001
-- **Presidio Analyzer**: http://localhost:5002
-- **Presidio Anonymizer**: http://localhost:5001
+### 3. Access the Application
 
-## 🔧 Servisler
+- **Main Application**: http://localhost:3000
+- **Development Application**: http://localhost:3001 (dev mode only)
+- **Presidio Analyzer API**: http://localhost:5002
+- **Presidio Anonymizer API**: http://localhost:5001
 
-### 1. **text-anonymizer** (Ana Uygulama)
-- **Port**: 3000
-- **Açıklama**: Next.js web uygulaması
-- **Bağımlılık**: presidio-analyzer, presidio-anonymizer
+## Detailed Usage
 
-### 2. **presidio-analyzer** (Microsoft Presidio)
+### Starting Services
+
+```bash
+# Start all services in background
+docker compose up -d
+
+# View logs
+docker compose logs -f
+
+# View logs for a specific service
+docker compose logs -f text-anonymizer
+```
+
+### Stopping Services
+
+```bash
+# Stop all services
+docker compose down
+
+# Remove services and volumes
+docker compose down -v
+
+# Remove services, volumes and images
+docker compose down --rmi all -v
+```
+
+### Restarting Services
+
+```bash
+# Restart all services
+docker compose restart
+
+# Restart a specific service
+docker compose restart text-anonymizer
+```
+
+### Checking Service Status
+
+```bash
+# List running services
+docker compose ps
+
+# Check service health status
+docker compose ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
+```
+
+## Service Details
+
+### Presidio Analyzer
 - **Port**: 5002
-- **Açıklama**: Hassas veri analizi servisi
 - **Image**: mcr.microsoft.com/presidio-analyzer:latest
+- **Purpose**: Analyzes texts and detects sensitive data
+- **Health Check**: Checked every 30 seconds
 
-### 3. **presidio-anonymizer** (Microsoft Presidio)
+### Presidio Anonymizer
 - **Port**: 5001
-- **Açıklama**: Veri anonimleştirme servisi
 - **Image**: mcr.microsoft.com/presidio-anonymizer:latest
+- **Purpose**: Anonymizes detected sensitive data
+- **Health Check**: Checked every 30 seconds
 
-## 🔧 Environment Variables
+### Text Anonymizer Web App
+- **Port**: 3000 (Production) / 3001 (Development)
+- **Build**: Built using local Dockerfile
+- **Purpose**: User interface and API services
+- **Dependency**: Requires Presidio services to be healthy
 
-Gerekirse aşağıdaki environment variable'ları `docker-compose.yml` dosyasına ekleyebilirsiniz:
+## Environment Variables
+
+### Production Environment
+```yaml
+NODE_ENV=production
+NEXT_TELEMETRY_DISABLED=1
+PORT=3000
+PRESIDIO_ANALYZER_URL=http://presidio-analyzer:3000/analyze
+PRESIDIO_ANONYMIZER_URL=http://presidio-anonymizer:3000/anonymize
+```
+
+### Development Environment
+```yaml
+NODE_ENV=development
+NEXT_TELEMETRY_DISABLED=1
+PORT=3000
+PRESIDIO_ANALYZER_URL=http://presidio-analyzer:3000
+PRESIDIO_ANONYMIZER_URL=http://presidio-anonymizer:3000
+```
+
+## Troubleshooting
+
+### Services Won't Start
+
+1. **Check Docker and Docker Compose versions**:
+   ```bash
+   docker --version
+   docker compose version
+   ```
+
+2. **Check for port conflicts**:
+   ```bash
+   # Check used ports
+   netstat -tulpn | grep :3000
+   netstat -tulpn | grep :5001
+   netstat -tulpn | grep :5002
+   ```
+
+3. **Examine logs**:
+   ```bash
+   docker compose logs
+   ```
+
+### Presidio Services Unhealthy
+
+1. **Check health check status**:
+   ```bash
+   docker compose ps
+   ```
+
+2. **Manually test Presidio services**:
+   ```bash
+   curl http://localhost:5002/
+   curl http://localhost:5001/
+   ```
+
+3. **Restart services**:
+   ```bash
+   docker compose restart presidio-analyzer presidio-anonymizer
+   ```
+
+### Web Application Not Accessible
+
+1. **Check web application status**:
+   ```bash
+   docker compose logs text-anonymizer
+   ```
+
+2. **Test API endpoint**:
+   ```bash
+   curl http://localhost:3000/api/analyze
+   ```
+
+3. **Check dependencies**:
+   ```bash
+   docker compose ps
+   ```
+
+## Performance Optimization
+
+### Resource Usage
+
+```bash
+# Monitor container resource usage
+docker stats
+
+# Monitor specific container resource usage
+docker stats text-anonymizer
+```
+
+### Memory and CPU Limits
+
+You can add the following configurations to the Docker Compose file:
 
 ```yaml
-environment:
-  - NODE_ENV=production
-  - NEXT_TELEMETRY_DISABLED=1
-  - PORT=3000
+services:
+  text-anonymizer:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
 ```
 
-## 📁 Dosya Yapısı
+## Development
 
-```
-.
-├── Dockerfile              # Production Docker image
-├── Dockerfile.dev          # Development Docker image
-├── docker-compose.yml      # Docker Compose konfigürasyonu (Presidio servisleri dahil)
-├── .dockerignore           # Docker build context'inden hariç tutulacak dosyalar
-└── README-Docker.md        # Bu dosya
-```
-
-## 🚀 Deployment Önerileri
-
-1. **Production**: `docker-compose up -d --build` kullanın
-2. **Development**: `docker-compose --profile dev up --build` kullanın
-3. **Monitoring**: `docker-compose logs -f` ile logları takip edin
-4. **Updates**: Kod değişikliklerinden sonra `--build` flag'i ile yeniden build edin
-5. **Health Checks**: Servislerin sağlık durumunu kontrol edin
-
-## 🔍 Troubleshooting
-
-### Port çakışması
-Eğer portlar kullanımdaysa, `docker-compose.yml` dosyasında port mapping'i değiştirin:
-
-```yaml
-ports:
-  - "3001:3000"  # Web app port'u
-  - "5003:3000"  # Analyzer port'u
-  - "5004:3000"  # Anonymizer port'u
-```
-
-### Presidio servisleri başlamıyor
-```bash
-# Servislerin durumunu kontrol edin
-docker-compose ps
-
-# Logları inceleyin
-docker-compose logs presidio-analyzer
-docker-compose logs presidio-anonymizer
-
-# Servisleri yeniden başlatın
-docker-compose restart presidio-analyzer presidio-anonymizer
-```
-
-### Build hatası
-```bash
-# Cache'i temizleyin
-docker system prune -a
-
-# Yeniden build edin
-docker-compose build --no-cache
-```
-
-### Permission hatası
-```bash
-# Container'ı root olarak çalıştırın (sadece development için)
-docker run -p 3000:3000 --user root text-anonymizer:dev
-```
-
-### Servis bağımlılıkları
-Ana uygulama Presidio servislerinin hazır olmasını bekler. Eğer bağlantı hatası alırsanız:
+### Running in Development Mode
 
 ```bash
-# Tüm servisleri sırayla başlatın
-docker-compose up presidio-analyzer presidio-anonymizer -d
-docker-compose up text-anonymizer -d
+# Start with development profile
+docker compose --profile dev up -d
+
+# Start only development service
+docker compose up text-anonymizer-dev
 ```
 
-## 🔒 Güvenlik Notları
+### Monitoring Code Changes
 
-- Presidio servisleri production ortamında güvenlik duvarı arkasında çalıştırılmalıdır
-- Hassas veriler container loglarında görünebilir, log seviyesini kontrol edin
-- Network izolasyonu için custom network kullanılmıştır
+In development mode, code changes are automatically detected and the application reloads.
+
+### Debug Mode
+
+```bash
+# Start with debug logs
+docker compose up --build
+```
+
+## Security
+
+### Network Isolation
+
+All services run in a dedicated Docker network called `text-anonymizer-network`.
+
+### Port Access
+
+- Only necessary ports are exposed to the outside world
+- Presidio services are only accessible through internal network
+
+## Backup and Restore
+
+### Volume Backup
+
+```bash
+# Backup volumes
+docker run --rm -v rag-mask_text-anonymizer-data:/data -v $(pwd):/backup alpine tar czf /backup/backup.tar.gz -C /data .
+```
+
+### Restore
+
+```bash
+# Restore volumes
+docker run --rm -v rag-mask_text-anonymizer-data:/data -v $(pwd):/backup alpine tar xzf /backup/backup.tar.gz -C /data
+```
+
+## Support
+
+For issues:
+1. Check this documentation
+2. Review GitHub Issues section
+3. Create a new issue
+
+## License
+
+This project is licensed under [license information].
